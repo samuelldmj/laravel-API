@@ -77,4 +77,18 @@ class AuthController extends Controller
         ], 401);
     }
 
+
+    public function profile()
+    {
+        $user = Auth::user();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $user,
+        ]);
+    }
+
 }
+
+
+
