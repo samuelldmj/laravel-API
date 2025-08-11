@@ -12,27 +12,32 @@ class AuthController extends Controller
 {
     public function register(Request $request)
     {
+        // Combine all validation rules into a single array
         $validatedData = $request->validate([
-            'name' => 'required',
+            'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
             'password' => 'required|confirmed|min:8',
+            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'role' => 'nullable|in:admin,author,reader',
         ]);
 
+        // Set default role if not provided
+        $role = $validatedData['role'] ?? 'reader';
 
-
-        if (!$validatedData) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Validation failed',
-                'errors' => $validatedData['errors'],
-            ], 422);
+        // Handle image upload after successful validation
+        $imagePath = null;
+        if ($request->hasFile('profile_picture')) {
+            $image = $request->file('profile_picture');
+            $imageName = time() . '.' . $image->getClientOriginalExtension();
+            $imagePath = $request->file('profile_picture')->store('profiles', 'public');
         }
-
 
         $user = User::create([
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'password' => Hash::make($validatedData['password']),
+            'profile_picture' => $imagePath,
+            'role' => $role,
         ]);
 
         return response()->json([
@@ -40,6 +45,7 @@ class AuthController extends Controller
             'message' => 'User registered successfully',
             'data' => $user,
         ], 201);
+
     }
 
 
