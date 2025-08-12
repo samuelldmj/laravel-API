@@ -78,15 +78,60 @@ class CategoryController extends Controller
      */
     public function show(string $id)
     {
-        //
+        //get category id
+        $category = Category::find($id);
+
+        //validate category
+        if (!$category) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Category not found',
+            ], 404);
+        }
+
+        //update a category
+        return response()->json([
+            'status' => 'success',
+            'data' => new CategoryResource($category),
+        ], 200);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, $id)
     {
-        //
+        // validate request
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'slug' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        // Find category manually
+        $category = Category::find($id);
+
+        if (!$category) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Category not found',
+            ], 404);
+        }
+
+        // Update category
+        $category->update($validator->validated());
+
+        return response()->json([
+            'status' => 'success',
+            'data' => new CategoryResource($category),
+        ], 200);
     }
 
     /**
@@ -94,6 +139,26 @@ class CategoryController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        //find category
+        $category = Category::find($id);
+
+        //if it does not exist
+        if (!$category) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Category not found',
+            ], 404);
+        }
+
+        //if it exists
+        $category->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Category deleted successfully',
+        ], 200);
+
     }
+
+
 }
