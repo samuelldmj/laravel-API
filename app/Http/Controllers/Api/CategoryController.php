@@ -6,7 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\CategoryResource;
 use App\Models\Category;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
@@ -48,7 +49,28 @@ class CategoryController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        //validating  request
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+        ]);
+
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $data['name'] = $request->name;
+        $data['slug'] = Str::slug($request->name);
+
+        $category = Category::create($data);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => new CategoryResource($category),
+        ], 201);
     }
 
     /**
