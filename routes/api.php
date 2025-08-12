@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CategoryController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -11,7 +12,17 @@ Route::get('/user', function (Request $request) {
 
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/login', [AuthController::class, 'login'])->name('login');
-Route::get('/profile', [AuthController::class, 'profile'])->name('profile')->middleware(['auth:sanctum']);
 
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware(['auth:sanctum']);
+Route::group(['middleware' => 'auth:sanctum'], function () {
+    Route::get('/profile', [AuthController::class, 'profile'])->name('profile');
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+});
 
+
+//Blog Categories Route endpoints
+
+// Publicly accessible routes
+Route::get('categories', [CategoryController::class, 'index']);
+Route::get('categories/{category}', [CategoryController::class, 'show']);
+
+Route::middleware('auth:sanctum')->apiResource('categories', CategoryController::class)->except(['index', 'show']);
