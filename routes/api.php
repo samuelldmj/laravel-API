@@ -20,9 +20,13 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
 
 
 //Blog Categories Route endpoints
-
 // Publicly accessible routes
 Route::get('categories', [CategoryController::class, 'index']);
 Route::get('categories/{category}', [CategoryController::class, 'show']);
-
 Route::middleware('auth:sanctum')->apiResource('categories', CategoryController::class)->except(['index', 'show']);
+
+
+//post routes
+Route::get('posts', [App\Http\Controllers\Api\PostController::class, 'index']);
+Route::patch('posts/{post}', [App\Http\Controllers\Api\PostController::class, 'show']);
+Route::middleware('auth:sanctum')->apiResource('posts', App\Http\Controllers\Api\PostController::class)->except(['index', 'show']);
