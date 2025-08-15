@@ -8,6 +8,7 @@ use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class CategoryController extends Controller
 {
@@ -20,28 +21,18 @@ class CategoryController extends Controller
 
         // Filtering
         if ($request->has('name')) {
-            $query->where('name', 'like', '%' . $request->query('name') . '%');
+            $query->where('name', 'like', '%' . $request->input('name') . '%');
         }
 
         // Sorting
-        $sort = $request->query('sort', 'id');
-        $direction = $request->query('direction', 'asc');
+        $sort = $request->input('sort', 'id');
+        $direction = $request->input('direction', 'asc');
         $query->orderBy($sort, $direction);
 
         // Pagination
         $categories = $query->paginate(15);
 
-        return response()->json([
-            'status' => 'success',
-            //category resource class: using it to control what data to expose to client.
-            'data' => CategoryResource::collection($categories),
-            'meta' => [
-                'current_page' => $categories->currentPage(),
-                'last_page' => $categories->lastPage(),
-                'per_page' => $categories->perPage(),
-                'total' => $categories->total(),
-            ]
-        ], 200);
+        return CategoryResource::collection($categories);
     }
 
     /**
@@ -49,11 +40,10 @@ class CategoryController extends Controller
      */
     public function store(Request $request)
     {
-        //validating  request
+        // Validation
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:categories,name',
         ]);
-
 
         if ($validator->fails()) {
             return response()->json([
@@ -62,103 +52,62 @@ class CategoryController extends Controller
             ], 422);
         }
 
-        $data['name'] = $request->name;
-        $data['slug'] = Str::slug($request->name);
+        $data = $validator->validated();
+        $data['slug'] = Str::slug($data['name']);
 
         $category = Category::create($data);
 
-        return response()->json([
-            'status' => 'success',
-            'data' => new CategoryResource($category),
-        ], 201);
+        return new CategoryResource($category);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Category $category)
     {
-        //get category id
-        $category = Category::find($id);
-
-        //validate category
-        if (!$category) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Category not found',
-            ], 404);
-        }
-
-        //update a category
-        return response()->json([
-            'status' => 'success',
-            'data' => new CategoryResource($category),
-        ], 200);
+        return new CategoryResource($category);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, Category $category)
     {
-        // validate request
+        // Validation
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'slug' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('categories')->ignore($category->id),
+            ],
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Validation failed',
                 'errors' => $validator->errors(),
             ], 422);
         }
 
-        // Find category manually
-        $category = Category::find($id);
+        $data = $validator->validated();
+        $data['slug'] = Str::slug($data['name']);
 
-        if (!$category) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Category not found',
-            ], 404);
-        }
+        $category->update($data);
 
-        // Update category
-        $category->update($validator->validated());
-
-        return response()->json([
-            'status' => 'success',
-            'data' => new CategoryResource($category),
-        ], 200);
+        return new CategoryResource($category);
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Category $category)
     {
-        //find category
-        $category = Category::find($id);
-
-        //if it does not exist
-        if (!$category) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Category not found',
-            ], 404);
-        }
-
-        //if it exists
         $category->delete();
 
         return response()->json([
             'status' => 'success',
             'message' => 'Category deleted successfully',
         ], 200);
-
     }
-
-
 }
