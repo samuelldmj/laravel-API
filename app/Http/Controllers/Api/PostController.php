@@ -7,6 +7,7 @@ use App\Http\Resources\PostResource;
 use App\Models\Category;
 use App\Models\Post;
 use Illuminate\Database\QueryException;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +19,8 @@ use Illuminate\Validation\Rule;
 
 class PostController extends Controller
 {
+
+    use AuthorizesRequests;
     /**
      * Display a listing of the resource.
      */
@@ -108,6 +111,9 @@ class PostController extends Controller
 
             if ($user->hasRole('admin')) {
                 $post->status = 'published';
+            }
+
+            if ($user->hasRole('admin') || $user->hasRole('author')) {
                 $post->published_at = Carbon::now();
             }
 
@@ -144,47 +150,89 @@ class PostController extends Controller
      */
     public function update(Request $request, Post $post)
     {
-        // Authorization check
-        if (Auth::user()->id !== $post->user_id) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'You are not authorized to update this post.',
-            ], 403);
+        // 1. AUTHORIZATION
+        $this->authorize('update', $post);
+
+        // Handle method override for multipart/form-data
+        if ($request->has('_method')) {
+            $request->setMethod($request->input('_method'));
         }
 
-        $request->validate([
-            'title' => 'sometimes|required|string|max:255',
-            'content' => 'sometimes|required|string',
-            'category_id' => 'sometimes|required|exists:categories,id',
+        // 2. VALIDATION
+        $rules = [
+            'title' => 'sometimes|string|max:255',
+            'content' => 'sometimes|string',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'excerpt' => 'nullable|string',
-        ]);
+        ];
 
-        // Handle thumbnail upload/removal
-        if ($request->hasFile('thumbnail')) {
-            // Delete old thumbnail if it exists
-            if ($post->thumbnail) {
-                Storage::disk('public')->delete($post->thumbnail);
+        // Add category_id validation if present
+        if ($request->has('category_id')) {
+            $categoryId = $request->input('category_id');
+
+            // Convert string to integer if it's a numeric string
+            if (is_string($categoryId) && is_numeric($categoryId)) {
+                $request->merge(['category_id' => (int) $categoryId]);
             }
-            $post->thumbnail = $request->file('thumbnail')->store('thumbnails', 'public');
-        } elseif ($request->input('thumbnail') === null) {
-            // Handle case where thumbnail is explicitly removed
-            if ($post->thumbnail) {
-                Storage::disk('public')->delete($post->thumbnail);
-            }
-            $post->thumbnail = null;
+
+            $rules['category_id'] = 'required|integer|exists:categories,id';
         }
 
-        $post->update([
-            'title' => $request->input('title', $post->title),
-            'content' => $request->input('content', $post->content),
-            'excerpt' => $request->input('excerpt', $post->excerpt),
-            'slug' => $request->has('title') ? Str::slug($request->title) : $post->slug,
-            'category_id' => $request->input('category_id', $post->category_id),
-            'thumbnail' => $post->thumbnail, // Ensure the new path is saved
-        ]);
+        $validator = Validator::make($request->all(), $rules);
 
-        return new PostResource($post);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $validatedData = $validator->validated();
+
+        // Handle slug update only if a new title is provided
+        if ($request->has('title')) {
+            // Generate a unique slug
+            $baseSlug = Str::slug($request->title);
+            $slug = $baseSlug;
+            $counter = 1;
+
+            // Check if the slug already exists (excluding current post)
+            while (Post::where('slug', $slug)->where('id', '!=', $post->id)->exists()) {
+                $slug = $baseSlug . '-' . $counter;
+                $counter++;
+            }
+
+            $validatedData['slug'] = $slug;
+        }
+
+        // Handle thumbnail logic
+        if ($request->hasFile('thumbnail')) {
+            // If a new thumbnail is uploaded, delete the old one first
+            if ($post->thumbnail) {
+                Storage::disk('public')->delete($post->thumbnail);
+            }
+            $validatedData['thumbnail'] = $request->file('thumbnail')->store('thumbnails', 'public');
+        } elseif ($request->has('thumbnail') && $request->input('thumbnail') === null) {
+            // If the 'thumbnail' key exists in the request and its value is null
+            if ($post->thumbnail) {
+                Storage::disk('public')->delete($post->thumbnail);
+                $validatedData['thumbnail'] = null;
+            }
+        }
+
+        // Handle post status changes based on user role
+        $user = Auth::user();
+        if ($user->hasRole('admin')) {
+            $validatedData['status'] = 'published';
+            $validatedData['published_at'] = Carbon::now();
+        }
+
+        // 3. PERSIST THE CHANGES
+        $post->update($validatedData);
+
+        // 4. RETURN A RESOURCE
+        return new PostResource($post->refresh()->load('category', 'user'));
     }
 
     /**
@@ -193,7 +241,8 @@ class PostController extends Controller
     public function destroy(Post $post)
     {
         // Authorization check
-        if (Auth::user()->id !== $post->user_id) {
+        $user = Auth::user();
+        if ($user->id !== $post->user_id && !$user->hasRole('admin')) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'You are not authorized to delete this post.',
@@ -212,4 +261,35 @@ class PostController extends Controller
             'message' => 'Post deleted successfully',
         ], 200);
     }
+
+
+
+    public function deleteThumbnail(Post $post)
+    {
+        // Authorize the action using a policy
+        // This is a good practice to ensure only authorized users can delete a thumbnail.
+        $this->authorize('update', $post); // Assuming thumbnail deletion is part of updating a post
+
+        // Check if the post has a thumbnail to delete
+        if ($post->thumbnail) {
+            // Delete the file from storage
+            Storage::disk('public')->delete($post->thumbnail);
+
+            // Clear the thumbnail path from the database
+            $post->thumbnail = null;
+            $post->save();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Thumbnail deleted successfully.'
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'No thumbnail found to delete.'
+        ], 404);
+    }
+
+
 }
