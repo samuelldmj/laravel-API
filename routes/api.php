@@ -24,10 +24,21 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
 // Publicly accessible routes
 // Category Routes
 Route::get('categories', [CategoryController::class, 'index']);
-Route::get('categories/{category:slug}', [CategoryController::class, 'show']);
-Route::middleware('auth:sanctum')->apiResource('categories', CategoryController::class)->except(['index', 'show']);
+
+//you can see all categories but you cannot modify them
+Route::middleware(['auth:sanctum', 'role:admin'])->apiResource('categories', CategoryController::class)->except(['index']);
+
 
 // Post Routes
 Route::get('posts', [PostController::class, 'index']);
-Route::get('posts/{post:slug}', [PostController::class, 'show']);
-Route::middleware('auth:sanctum')->apiResource('posts', PostController::class)->except(['index', 'show']);
+
+//thumbnail delete
+// Route::delete('posts/{post}/thumbnail', [PostController::class, 'deleteThumbnail'])->middleware('auth:sanctum', 'role:admin, author');
+
+Route::middleware(['auth:sanctum', 'role:admin,author'])->apiResource('posts', PostController::class)->except('index');
+
+// Alternative route for updating posts with multipart/form-data using POST
+Route::post('posts/{post}/update', [PostController::class, 'update'])->middleware(['auth:sanctum', 'role:admin,author']);
+
+
+
