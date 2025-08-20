@@ -14,11 +14,19 @@ class PostResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-
         return [
+            // 'id' => $this->id,
             'title' => $this->title,
+            'slug' => $this->slug,
             'content' => $this->content,
-            'thumbnail' => $this->thumbnail,
+            'excerpt' => $this->excerpt,
+            'thumbnail' => $this->thumbnail ? asset('storage/' . $this->thumbnail) : null,
+            'status' => $this->status,
+            'published_at' => $this->published_at,
+            // 'created_at' => $this->created_at,
+            // 'updated_at' => $this->updated_at,
+            // 'category' => $this->whenLoaded('category'),
+            // 'user' => $this->whenLoaded('user'),
         ];
     }
 }
