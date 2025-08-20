@@ -104,6 +104,33 @@ public function update(Request $request, Post $post)
             ], 422);
         }
 
+
+        //using validate method
+//         try {
+//     // 1. VALIDATION
+//     $validatedData = $request->validate([
+//         'title' => 'sometimes|string|max:255',
+//         'content' => 'sometimes|string',
+//         'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+//         'excerpt' => 'nullable|string',
+//         'category_id' => 'required|integer|exists:categories,id',
+//     ]);
+//
+//     // The rest of your logic would go here if validation passes.
+//     // For example, saving the data to the database.
+//
+// } catch (\Illuminate\Validation\ValidationException $e) {
+//     // Catch the validation exception
+//     Log::error('Validation failed:', $e->errors());
+//
+//     // You can still return a JSON response with the errors
+//     return response()->json([
+//         'status' => 'error',
+//         'message' => 'Validation failed',
+//         'errors' => $e->errors()
+//     ], 422);
+// }
+
         $validatedData = $validator->validated();
         Log::info('Validated data:', $validatedData);
 
