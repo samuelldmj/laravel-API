@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\PostResource;
 use App\Models\Category;
 use App\Models\Post;
+use App\Models\Seo;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -99,6 +101,8 @@ class PostController extends Controller
                 $counter++;
             }
 
+            DB::beginTransaction();
+
             $post = new Post([
                 'title' => $request->title,
                 'content' => $request->content,
@@ -119,7 +123,22 @@ class PostController extends Controller
 
             $post->save();
 
+
+            //seo creation
+            $seo = [
+                'post_id' => $post->id,
+                'meta_title' => $request->meta_title,
+                'meta_description' => $request->meta_description,
+                'meta_keywords' => $request->meta_keywords,
+            ];
+
+            Seo::create($seo);
+
+            DB::commit();
+            $post = $post->fresh('seo');
+
         } catch (QueryException $e) {
+            DB::rollBack();
             // Log the error for debugging purposes
             Log::error('Post creation failed', [
                 'error' => $e->getMessage(),
