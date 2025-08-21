@@ -77,6 +77,10 @@ class PostController extends Controller
             'category_id' => 'required|exists:categories,id',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'excerpt' => 'nullable|string',
+            'meta_title' => 'required',
+            'meta_description' => 'required',
+            'meta_keywords' => 'required'
+
         ]);
 
         // Authorization check
@@ -183,6 +187,9 @@ class PostController extends Controller
             'content' => 'sometimes|string',
             'thumbnail' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'excerpt' => 'nullable|string',
+            'meta_title' => 'sometimes',
+            'meta_description' => 'sometimes',
+            'meta_keywords' => 'sometimes'
         ];
 
         // Add category_id validation if present
@@ -247,8 +254,23 @@ class PostController extends Controller
             $validatedData['published_at'] = Carbon::now();
         }
 
+        DB::beginTransaction();
+
+
         // 3. PERSIST THE CHANGES
         $post->update($validatedData);
+
+        //seo update
+        $seo = Seo::where('post_id', $post->id)->first();
+        $seo->meta_title = $request->meta_title;
+        $seo->meta_description = $request->meta_description;
+        $seo->meta_keywords = $request->meta_keywords;
+
+        $seo->save();
+
+        DB::commit();
+        $post = $post->fresh('seo');
+
 
         // 4. RETURN A RESOURCE
         return new PostResource($post->refresh()->load('category', 'user'));
