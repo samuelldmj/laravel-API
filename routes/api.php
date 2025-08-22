@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\LikeController;
 use App\Http\Controllers\Api\PostController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -40,5 +41,11 @@ Route::middleware(['auth:sanctum', 'role:admin,author'])->apiResource('posts', P
 // Alternative route for updating posts with multipart/form-data using POST
 Route::post('posts/{post}/update', [PostController::class, 'update'])->middleware(['auth:sanctum', 'role:admin,author']);
 
+
+//likes route
+// Route::middleware(['auth:sanctum'])->apiResource('likes', LikeController::class);
+Route::post('posts/reaction', [LikeController::class, 'react'])->middleware('auth:sanctum');
+
+Route::get('/posts/{post}/reaction', [LikeController::class, 'reactions'])->middleware('auth:sanctum');
 
 

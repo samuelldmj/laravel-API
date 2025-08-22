@@ -6,5 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class Like extends Model
 {
-    protected $fillable = ['post_id', 'user_id'];
+
+    public $timestamps = true;
+
+    const UPDATED_AT = null;
+    protected $fillable = ['post_id', 'user_id', 'status'];
 }
+
+
+
+
+
