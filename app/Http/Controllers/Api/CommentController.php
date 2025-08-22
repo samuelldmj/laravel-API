@@ -91,7 +91,7 @@ class CommentController extends Controller
      */
     public function show(string $id)
     {
-        //
+        return CommentResource::make(Comment::with(['user', 'post'])->find($id));
     }
 
     /**

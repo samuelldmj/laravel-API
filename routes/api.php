@@ -51,8 +51,7 @@ Route::get('/posts/{post}/reaction', [LikeController::class, 'reactions'])->midd
 
 //comment route
 Route::get('comments', [CommentController::class, 'index'])->middleware(['auth:sanctum', 'role:admin']);
-Route::apiResource('comments', CommentController::class)->middleware('auth:sanctum')->except(['index', 'show']);
-
+Route::apiResource('comments', CommentController::class)->middleware('auth:sanctum');
 Route::patch('comments/{comment}/change-status', [CommentController::class, 'changeStatus'])->middleware(['auth:sanctum', 'role:admin']);
 
 
