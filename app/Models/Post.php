@@ -42,4 +42,10 @@ class Post extends Model
     {
         return $this->hasOne(Seo::class);
     }
+
+
+    public function comment()
+    {
+        return $this->hasMany(Comment::class);
+    }
 }

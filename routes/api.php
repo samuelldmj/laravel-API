@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\LikeController;
 use App\Http\Controllers\Api\PostController;
 use Illuminate\Http\Request;
@@ -47,5 +48,9 @@ Route::post('posts/{post}/update', [PostController::class, 'update'])->middlewar
 Route::post('posts/reaction', [LikeController::class, 'react'])->middleware('auth:sanctum');
 
 Route::get('/posts/{post}/reaction', [LikeController::class, 'reactions'])->middleware('auth:sanctum');
+
+//comment route
+Route::get('comments', [CommentController::class, 'index']);
+Route::apiResource('comments', CommentController::class)->middleware('auth:sanctum')->except(['index', 'show']);
 
 
