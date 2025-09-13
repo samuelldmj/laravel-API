@@ -50,8 +50,20 @@ Route::post('posts/reaction', [LikeController::class, 'react'])->middleware('aut
 Route::get('/posts/{post}/reaction', [LikeController::class, 'reactions'])->middleware('auth:sanctum');
 
 //comment route
-Route::get('comments', [CommentController::class, 'index'])->middleware(['auth:sanctum', 'role:admin']);
-Route::apiResource('comments', CommentController::class)->middleware('auth:sanctum');
-Route::patch('comments/{comment}/change-status', [CommentController::class, 'changeStatus'])->middleware(['auth:sanctum', 'role:admin']);
+Route::middleware('auth:sanctum')->group(function () {
+    // This route should come before the apiResource route to ensure it's matched first.
+    // It's a specific route for an admin-only action.
+    Route::get('comments', [CommentController::class, 'index'])->middleware('role:admin');
+
+    // This is the standard apiResource route. It will automatically create routes for:
+    // GET /comments (index), GET /comments/{comment} (show), POST /comments (store),
+    // PUT/PATCH /comments/{comment} (update), and DELETE /comments/{comment} (destroy).
+    // The middleware is applied to ALL of these routes.
+    Route::apiResource('comments', CommentController::class);
+
+    // This is a specific route for an admin-only action, so it has its own middleware.
+    Route::patch('comments/{comment}/change-status', [CommentController::class, 'changeStatus'])->middleware('role:admin');
+});
+
 
 
